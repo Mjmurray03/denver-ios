@@ -93,6 +93,25 @@ class MapGenerator:
         folium.TileLayer("cartodbpositron", name="Light").add_to(m)
         folium.TileLayer("cartodbdark_matter", name="Dark").add_to(m)
 
+        # Add satellite imagery layers
+        folium.TileLayer(
+            tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+            attr="Esri",
+            name="Satellite",
+        ).add_to(m)
+
+        folium.TileLayer(
+            tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+            attr="Google",
+            name="Google Satellite",
+        ).add_to(m)
+
+        folium.TileLayer(
+            tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
+            attr="Google",
+            name="Google Hybrid",
+        ).add_to(m)
+
         # Prepare data
         df = scored_df.copy()
 
@@ -200,22 +219,41 @@ class MapGenerator:
 
     def _build_popup(self, row: pd.Series, lat: float, lon: float) -> str:
         """Build HTML popup content for a marker."""
-        # Get values with fallbacks
-        address = self._get_value(row, "address", "situs_address", "full_address") or "Unknown"
-        parcel_id = self._get_value(row, "parcel_id", "accountno", "parcelid") or "N/A"
+        # Get values with fallbacks - check both raw source columns and cleaned export columns
+        address = self._get_value(row, "address", "concataddr1", "situs_address", "full_address") or "Unknown"
+        parcel_id = self._get_value(row, "parcel_id", "PARCELNB", "accountno", "parcelid") or "N/A"
         score = self._get_value(row, "ios_score", "score")
         grade = self._get_value(row, "ios_grade", "grade") or "N/A"
+
+        # Calculate acres from parcel_area_sqft if acres not directly available
         acres = self._get_value(row, "acres", "calc_acreage", "parcel_acres")
+        if acres is None:
+            parcel_sqft = self._get_value(row, "parcel_area_sqft", "parcel_sqft", "Shape_Area")
+            if parcel_sqft:
+                acres = parcel_sqft / 43560.0
+
         coverage = self._get_value(row, "building_coverage_pct", "coverage_pct")
         zoning = self._get_value(row, "zoning_code", "zoning", "zone") or "N/A"
-        owner = self._get_value(row, "owner_name", "owner", "owner1") or "N/A"
-        assessed = self._get_value(row, "total_assessed", "assessed_value", "total_value")
+        owner = self._get_value(row, "owner_name", "ownernamefull", "ownername1", "owner", "owner1") or "N/A"
+        assessed = self._get_value(row, "assessed_total_value", "total_assessed", "assessed_value", "total_value")
+
+        # Additional useful fields
+        city = self._get_value(row, "city", "loccity") or ""
+        actual_value = self._get_value(row, "actual_total_value")
+        last_sale_price = self._get_value(row, "last_sale_price")
+        last_sale_date = self._get_value(row, "last_sale_date")
+        year_built = self._get_value(row, "year_built", "oldest_year_built")
+        property_type = self._get_value(row, "property_type")
 
         # Format values
         score_str = f"{score:.1f}" if score else "N/A"
         acres_str = f"{acres:.2f}" if acres else "N/A"
         coverage_str = f"{coverage:.1f}%" if coverage else "N/A"
         assessed_str = f"${assessed:,.0f}" if assessed else "N/A"
+        actual_str = f"${actual_value:,.0f}" if actual_value else "N/A"
+        sale_price_str = f"${last_sale_price:,.0f}" if last_sale_price else "N/A"
+        sale_date_str = str(last_sale_date)[:10] if last_sale_date else "N/A"
+        year_built_str = str(int(year_built)) if year_built else "N/A"
 
         # Google Maps link
         gmaps_link = f"https://www.google.com/maps?q={lat},{lon}"
@@ -230,9 +268,12 @@ class MapGenerator:
         }
         grade_color = grade_colors.get(grade, "#6c757d")
 
+        # Format address with city
+        full_address = f"{address}, {city}" if city else address
+
         popup_html = f"""
-        <div style="font-family: Arial, sans-serif; min-width: 280px;">
-            <h4 style="margin: 0 0 10px 0; color: #333;">{address}</h4>
+        <div style="font-family: Arial, sans-serif; min-width: 320px;">
+            <h4 style="margin: 0 0 10px 0; color: #333;">{full_address}</h4>
             <div style="background: {grade_color}; color: white; padding: 8px; border-radius: 4px; margin-bottom: 10px; text-align: center;">
                 <strong>IOS Score: {score_str}</strong> | <strong>Grade: {grade}</strong>
             </div>
@@ -242,11 +283,15 @@ class MapGenerator:
                 <tr><td style="padding: 3px; font-weight: bold;">Building Coverage:</td><td style="padding: 3px;">{coverage_str}</td></tr>
                 <tr><td style="padding: 3px; font-weight: bold;">Zoning:</td><td style="padding: 3px;">{zoning}</td></tr>
                 <tr><td style="padding: 3px; font-weight: bold;">Owner:</td><td style="padding: 3px;">{owner}</td></tr>
+                <tr><td style="padding: 3px; font-weight: bold;">Property Type:</td><td style="padding: 3px;">{property_type or 'N/A'}</td></tr>
+                <tr><td style="padding: 3px; font-weight: bold;">Year Built:</td><td style="padding: 3px;">{year_built_str}</td></tr>
+                <tr><td style="padding: 3px; font-weight: bold;">Actual Value:</td><td style="padding: 3px;">{actual_str}</td></tr>
                 <tr><td style="padding: 3px; font-weight: bold;">Assessed Value:</td><td style="padding: 3px;">{assessed_str}</td></tr>
+                <tr><td style="padding: 3px; font-weight: bold;">Last Sale:</td><td style="padding: 3px;">{sale_price_str} ({sale_date_str})</td></tr>
             </table>
             <div style="margin-top: 10px; text-align: center;">
                 <a href="{gmaps_link}" target="_blank" style="color: #007bff; text-decoration: none;">
-                    📍 Open in Google Maps
+                    Open in Google Maps
                 </a>
             </div>
         </div>
@@ -256,14 +301,16 @@ class MapGenerator:
 
     def _build_tooltip(self, row: pd.Series) -> str:
         """Build tooltip text for hover."""
-        address = self._get_value(row, "address", "situs_address", "full_address") or "Unknown"
+        address = self._get_value(row, "address", "concataddr1", "situs_address", "full_address") or "Unknown"
+        city = self._get_value(row, "city", "loccity") or ""
         score = self._get_value(row, "ios_score", "score")
         grade = self._get_value(row, "ios_grade", "grade")
 
         score_str = f"{score:.1f}" if score else "N/A"
         grade_str = f" ({grade})" if grade else ""
+        full_address = f"{address}, {city}" if city else address
 
-        return f"{address} - Score: {score_str}{grade_str}"
+        return f"{full_address} - Score: {score_str}{grade_str}"
 
     def _add_legend(self, m: folium.Map) -> None:
         """Add a legend to the map."""
