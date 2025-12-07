@@ -11,27 +11,27 @@ weights:
   location: 0.05         # 5%  - Geographic/access factors
 
 # Parcel Size Scoring (in acres)
-# Optimal range for IOS is 2-5 acres
+# Client criteria: 3-15 acres preferred
 parcel_size:
   thresholds:
-    - max: 0.5
+    - max: 1.0
       score: 0
       label: "too_small"
-    - max: 1.0
-      score: 30
-      label: "marginal"
     - max: 2.0
+      score: 40
+      label: "marginal"
+    - max: 3.0
       score: 70
       label: "good"
-    - max: 5.0
+    - max: 15.0
       score: 100
       label: "optimal"
-    - max: 10.0
-      score: 95
-      label: "excellent"
     - max: 20.0
-      score: 70
+      score: 80
       label: "large_workable"
+    - max: 30.0
+      score: 60
+      label: "large"
     - max: null  # No upper limit
       score: 40
       label: "very_large"
@@ -158,25 +158,45 @@ zoning:
 
 # Land Use Scoring
 # Based on current use and property type descriptions
+# Client target uses: truck trailer, building materials, equipment storage/rental,
+#                     container yards, bulk materials, fleet parking
 land_use:
-  # Primary keywords for high IOS compatibility
+  # Primary keywords for high IOS compatibility (client target uses)
   high_value_keywords:
     - pattern: "outdoor storage"
       score: 100
     - pattern: "contractor yard"
       score: 100
+    - pattern: "container yard"
+      score: 100
+    - pattern: "truck trailer"
+      score: 100
+    - pattern: "trailer parking"
+      score: 100
+    - pattern: "fleet parking"
+      score: 100
+    - pattern: "truck parking"
+      score: 100
     - pattern: "equipment storage"
+      score: 95
+    - pattern: "equipment rental"
       score: 95
     - pattern: "material storage"
       score: 95
+    - pattern: "building materials"
+      score: 95
+    - pattern: "bulk materials"
+      score: 95
     - pattern: "vehicle storage"
       score: 90
-    - pattern: "container yard"
-      score: 100
     - pattern: "truck terminal"
-      score: 85
+      score: 90
     - pattern: "industrial yard"
       score: 90
+    - pattern: "storage yard"
+      score: 90
+    - pattern: "laydown yard"
+      score: 95
 
   # Secondary keywords (moderate compatibility)
   moderate_keywords:
@@ -185,6 +205,10 @@ land_use:
     - pattern: "distribution"
       score: 55
     - pattern: "industrial"
+      score: 70
+    - pattern: "logistics"
+      score: 65
+    - pattern: "trucking"
       score: 70
     - pattern: "manufacturing"
       score: 50
@@ -298,3 +322,25 @@ classification:
       grade: "F"
       label: "Poor IOS Candidate"
       description: "Not recommended for IOS use"
+
+# Client-Specific Criteria Filters
+# Used for post-scoring filtering to match investment criteria
+client_criteria:
+  # Value/Purchase Price range
+  value_range:
+    min: 3000000   # $3M minimum
+    max: 15000000  # $15M maximum
+    relaxed_min: 2000000   # $2M for relaxed filter
+    relaxed_max: 20000000  # $20M for relaxed filter
+
+  # Parcel size range (in acres)
+  parcel_size:
+    min: 3.0
+    max: 15.0
+    relaxed_min: 2.0
+    relaxed_max: 20.0
+
+  # Building coverage threshold
+  building_coverage:
+    max: 20.0       # Sub 20% coverage
+    relaxed_max: 25.0
