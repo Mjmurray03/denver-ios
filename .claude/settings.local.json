@@ -8,7 +8,20 @@
       "Bash(tree:*)",
       "Bash(dir:*)",
       "Bash(rm:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(claude mcp add:*)",
+      "mcp__Ref__ref_search_documentation",
+      "mcp__exa__web_search_exa",
+      "mcp__Ref__ref_read_url",
+      "Bash(cat:*)",
+      "Bash(echo:*)",
+      "Bash(./venv/Scripts/python:*)",
+      "Bash(./venv/Scripts/pip install:*)",
+      "WebFetch(domain:gis.adcogov.org)",
+      "WebFetch(domain:gis.adamscounty.org)",
+      "WebFetch(domain:data-adcogov.opendata.arcgis.com)"
     ],
     "deny": [],
     "ask": []

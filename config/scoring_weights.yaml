@@ -1,0 +1,300 @@
+# IOS (Industrial Outdoor Storage) Scoring Configuration
+# All weights should sum to 1.0 (100%)
+
+# Dimension weights for composite score calculation
+weights:
+  parcel_size: 0.25      # 25% - Parcel acreage scoring
+  building_coverage: 0.30 # 30% - CRITICAL: Building coverage (inverted - less is better)
+  zoning: 0.20           # 20% - Zoning compatibility
+  land_use: 0.15         # 15% - Current land use classification
+  structural: 0.05       # 5%  - Building count and size factors
+  location: 0.05         # 5%  - Geographic/access factors
+
+# Parcel Size Scoring (in acres)
+# Optimal range for IOS is 2-5 acres
+parcel_size:
+  thresholds:
+    - max: 0.5
+      score: 0
+      label: "too_small"
+    - max: 1.0
+      score: 30
+      label: "marginal"
+    - max: 2.0
+      score: 70
+      label: "good"
+    - max: 5.0
+      score: 100
+      label: "optimal"
+    - max: 10.0
+      score: 95
+      label: "excellent"
+    - max: 20.0
+      score: 70
+      label: "large_workable"
+    - max: null  # No upper limit
+      score: 40
+      label: "very_large"
+
+# Building Coverage Scoring (percentage of parcel covered by buildings)
+# INVERTED LOGIC: Lower coverage = higher score for IOS
+# 5-15% is optimal (some structures for office/shop, mostly open)
+building_coverage:
+  thresholds:
+    - max: 5.0
+      score: 95
+      label: "mostly_open"
+    - max: 15.0
+      score: 100
+      label: "optimal"
+    - max: 25.0
+      score: 85
+      label: "good"
+    - max: 35.0
+      score: 60
+      label: "marginal"
+    - max: 50.0
+      score: 30
+      label: "poor"
+    - max: null
+      score: 0
+      label: "not_suitable"
+
+# Zoning Scoring
+# Industrial and outdoor-storage-friendly zones score highest
+# Based on Adams County actual zoning codes
+zoning:
+  # High value zones (score: 100) - Industrial
+  high_value:
+    codes:
+      - "I-1"      # Light Industrial
+      - "I-2"      # General Industrial
+      - "I-3"      # Heavy Industrial
+      - "M-1"
+      - "M-2"
+      - "IL"
+      - "IH"
+    score: 100
+
+  # Medium-high value zones (score: 75) - Heavy Commercial
+  medium_high:
+    codes:
+      - "C-5"      # Commercial-5 (Heavy Commercial)
+    score: 75
+
+  # Moderate value zones (score: 65) - Highway Commercial
+  moderate:
+    codes:
+      - "C-4"      # Commercial-4 (Highway)
+    score: 65
+
+  # Medium value zones (score: 55-60) - Agricultural/General Commercial
+  medium:
+    codes:
+      - "A-1"      # Agricultural-1 (large lots, outdoor use OK)
+      - "A-2"      # Agricultural-2
+      - "A-3"      # Agricultural-3
+      - "C-3"      # Commercial-3 (General)
+      - "RP"       # Resource Production
+    score: 55
+
+  # PUD zones (score: 50) - depends on actual use
+  pud:
+    codes:
+      - "P-U-D"
+      - "P-U-D(P)"
+      - "PUD"
+      - "AV"       # Airport Vicinity
+      - "CO"       # Corridor Overlay
+    score: 50
+
+  # Low-medium zones (score: 40-45)
+  low_medium:
+    codes:
+      - "C-2"      # Commercial-2 (Community)
+      - "C-0"      # Commercial Office
+      - "DIA"      # Denver International Airport
+      - "TOD"      # Transit Oriented Development
+    score: 40
+
+  # Low value zones (score: 10-35)
+  low_value:
+    patterns:
+      - "R-"       # Residential (R-1-A, R-1-C, R-2, R-3, R-4, R-E)
+      - "M-H"      # Mobile Home
+      - "C-1"      # Commercial-1 (Neighborhood)
+    score: 10
+
+  # City placeholder zones (score: 40 - unknown)
+  city_placeholders:
+    patterns:
+      - "NORTHGLENN"
+      - "ARVADA"
+      - "LOCHBUIE"
+      - "BRIGHTON"
+      - "BENNETT"
+      - "AURORA"
+      - "WESTMINSTER"
+      - "THORNTON"
+      - "COMMERCE CITY"
+      - "FEDERAL HEIGHTS"
+    score: 40
+
+  # Bonus keywords in zoning description (added to base score)
+  bonus_keywords:
+    - pattern: "outdoor storage"
+      bonus: 15
+    - pattern: "contractor"
+      bonus: 10
+    - pattern: "equipment"
+      bonus: 10
+    - pattern: "yard"
+      bonus: 5
+    - pattern: "heavy"
+      bonus: 5
+
+  # Default score for unknown zones
+  default_score: 40
+
+# Land Use Scoring
+# Based on current use and property type descriptions
+land_use:
+  # Primary keywords for high IOS compatibility
+  high_value_keywords:
+    - pattern: "outdoor storage"
+      score: 100
+    - pattern: "contractor yard"
+      score: 100
+    - pattern: "equipment storage"
+      score: 95
+    - pattern: "material storage"
+      score: 95
+    - pattern: "vehicle storage"
+      score: 90
+    - pattern: "container yard"
+      score: 100
+    - pattern: "truck terminal"
+      score: 85
+    - pattern: "industrial yard"
+      score: 90
+
+  # Secondary keywords (moderate compatibility)
+  moderate_keywords:
+    - pattern: "warehouse"
+      score: 60
+    - pattern: "distribution"
+      score: 55
+    - pattern: "industrial"
+      score: 70
+    - pattern: "manufacturing"
+      score: 50
+    - pattern: "commercial"
+      score: 40
+
+  # Property type mappings
+  property_types:
+    - pattern: "vacant"
+      score: 75
+    - pattern: "land"
+      score: 75
+    - pattern: "industrial"
+      score: 70
+    - pattern: "commercial"
+      score: 50
+    - pattern: "residential"
+      score: 10
+    - pattern: "office"
+      score: 30
+
+  # Default score when no keywords match
+  default_score: 50
+
+# Structural Scoring
+# Based on number of buildings and sizes
+structural:
+  # Building count adjustments (additive)
+  building_count:
+    - count: 0
+      adjustment: 20
+      label: "vacant_ideal"
+    - count: 1
+      adjustment: 10
+      label: "single_building"
+    - count: 2
+      adjustment: 0
+      label: "few_buildings"
+    - count: 3
+      adjustment: 0
+      label: "few_buildings"
+    - count: null  # 4+
+      adjustment: -10
+      label: "many_buildings"
+
+  # Largest building size adjustments (additive, in sqft)
+  building_size:
+    - max: 2000
+      adjustment: 20
+      label: "small_building"
+    - max: 5000
+      adjustment: 10
+      label: "medium_small"
+    - max: 10000
+      adjustment: 0
+      label: "medium_building"
+    - max: null
+      adjustment: -20
+      label: "large_building"
+
+  # Base score before adjustments
+  base_score: 50
+
+# Location Scoring
+# Geographic and access factors
+location:
+  # Base score for being in target industrial area
+  base_score: 60
+
+  # DIA proximity bonus (entire Commerce City area qualifies)
+  dia_proximity_bonus: 15
+
+  # Future: highway access bonuses
+  highway_access:
+    enabled: false
+    i70_bonus: 10
+    i270_bonus: 8
+    i76_bonus: 8
+
+  # Future: residential proximity penalty
+  residential_proximity:
+    enabled: false
+    adjacent_penalty: -15
+    nearby_penalty: -5
+
+# Score classification tiers
+classification:
+  tiers:
+    - min: 85
+      max: 100
+      grade: "A"
+      label: "Excellent IOS Candidate"
+      description: "High priority - immediate follow-up recommended"
+    - min: 75
+      max: 84
+      grade: "B"
+      label: "Good IOS Candidate"
+      description: "Strong potential - worth detailed analysis"
+    - min: 65
+      max: 74
+      grade: "C"
+      label: "Moderate IOS Candidate"
+      description: "Possible opportunity - review for specific use cases"
+    - min: 50
+      max: 64
+      grade: "D"
+      label: "Marginal IOS Candidate"
+      description: "Limited suitability - consider only if other factors favorable"
+    - min: 0
+      max: 49
+      grade: "F"
+      label: "Poor IOS Candidate"
+      description: "Not recommended for IOS use"
